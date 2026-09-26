@@ -250,7 +250,7 @@ jobs:
 
 
           tar -czf artifacts/kernel-build-output.tar.gz \
-            -C out .
+            -C $GITHUB_WORKSPACE/src/kernel/out/ .
 
           echo "Artifacts:"
           ls -lh artifacts
