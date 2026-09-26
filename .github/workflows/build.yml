@@ -36,13 +36,6 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
           
-      - name: Checkout KernelSU-Next source
-        uses: actions/checkout@v4
-        with:
-          repository: KernelSU-Next/KernelSU-Next
-          ref: legacy
-          path: kernel/KernelSU-Next
-          fetch-depth: 1
                 
       - name: Build kernel in Arch Linux
         env:
@@ -201,7 +194,9 @@ jobs:
 
               echo "CROSS_COMPILE=$CROSS_COMPILE"
               echo "CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32"
-
+              
+              echo "Fetching latest KernelSU source..."
+              git clone depth 1 https://github.com/KernelSU-Next/KernelSU-Next
               echo "Preparing kernel configuration..."
 
               make \
