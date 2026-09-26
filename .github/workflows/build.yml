@@ -224,7 +224,7 @@ jobs:
                 CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32"
 
               echo "Kernel build completed."
-
+              chmod -R 777 $BUILD_DIR
               echo "Kernel output:"
               find "$BUILD_DIR/arch/arm64/boot" \
                 -maxdepth 3 \
