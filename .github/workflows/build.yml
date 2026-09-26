@@ -249,9 +249,6 @@ jobs:
           fi
 
 
-          tar -czf artifacts/kernel-build-output.tar.gz \
-            -C out .
-
           echo "Artifacts:"
           ls -lh artifacts
 
