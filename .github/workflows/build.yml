@@ -31,7 +31,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: abdodz1234/kernel_msm-4.19
-          ref: main
           token: ${{ secrets.KERNEL_REPO_TOKEN }}
           path: kernel
           fetch-depth: 1
