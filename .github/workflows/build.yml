@@ -21,8 +21,8 @@ jobs:
         run: |
           set -euxo pipefail
 
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android &
+          sudo rm -rf /opt/ghc &
           sudo docker system prune -af || true
 
           df -h
@@ -196,7 +196,7 @@ jobs:
               echo "CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32"
               
               echo "Fetching latest KernelSU source..."
-              git clone depth 1 https://github.com/KernelSU-Next/KernelSU-Next
+              git clone --depth 1 https://github.com/KernelSU-Next/KernelSU-Next
               echo "Preparing kernel configuration..."
 
               make \
