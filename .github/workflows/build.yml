@@ -196,7 +196,7 @@ jobs:
               echo "CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32"
               
               echo "Fetching latest KernelSU source..."
-              git clone --depth 1 https://github.com/KernelSU-Next/KernelSU-Next
+              git clone --depth 1 https://github.com/KernelSU-Next/KernelSU-Next -b legacy
               echo "Preparing kernel configuration..."
 
               make \
