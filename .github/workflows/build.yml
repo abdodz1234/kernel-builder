@@ -35,7 +35,15 @@ jobs:
           path: kernel
           fetch-depth: 1
           persist-credentials: false
-
+          
+      - name: Checkout KernelSU-Next  source
+        uses: actions/checkout@v4
+        with:
+          repository: KernelSU-Next/KernelSU-Next
+          ref: legacy
+          path: KernelSU-Next
+          fetch-depth: 1
+                
       - name: Build kernel in Arch Linux
         env:
           GH_TOKEN: ${{ github.token }}
