@@ -214,18 +214,6 @@ jobs:
                 CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
                 mi439_defconfig
 
-              # menuconfig is interactive and cannot run unattended in CI.
-              # Use olddefconfig for a noninteractive build.
-              make \
-                O="$BUILD_DIR" \
-                ARCH=arm64 \
-                CC=clang \
-                LLVM=1 \
-                LLVM_IAS=1 \
-                CROSS_COMPILE="$CROSS_COMPILE" \
-                CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
-                mi439_defconfig
-
               echo "Building kernel..."
 
               make \
