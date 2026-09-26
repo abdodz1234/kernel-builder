@@ -1,0 +1,272 @@
+name: Build Android Kernel
+
+on:
+  workflow_dispatch:
+
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build kernel
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Free runner disk space
+        shell: bash
+        run: |
+          set -euxo pipefail
+
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo docker system prune -af || true
+
+          df -h
+
+      - name: Checkout private kernel source
+        uses: actions/checkout@v4
+        with:
+          repository: abdodz1234/kernel_msm-4.19
+          ref: main
+          token: ${{ secrets.KERNEL_REPO_TOKEN }}
+          path: kernel
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Build kernel in Arch Linux
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker run --rm \
+            --env GH_TOKEN="$GH_TOKEN" \
+            --env GITHUB_WORKSPACE=/src \
+            --volume "$GITHUB_WORKSPACE:/src" \
+            --workdir /src/kernel \
+            archlinux:latest \
+            bash -euxo pipefail -c '
+              pacman-key --init
+              pacman-key --populate archlinux
+
+              pacman -Syu --needed --noconfirm \
+                archlinux-keyring \
+                base-devel \
+                bc \
+                bison \
+                ccache \
+                clang \
+                cpio \
+                curl \
+                flex \
+                git \
+                jq \
+                libelf \
+                lld \
+                llvm \
+                make \
+                ninja \
+                openssl \
+                patch \
+                patchelf \
+                python \
+                tar \
+                unzip \
+                wget \
+                xz \
+                zstd
+
+              export KBUILD_BUILD_USER="android-build"
+              export KBUILD_BUILD_HOST="android-build"
+              export ARCH=arm64
+
+              BUILD_DIR="/src/out"
+              TOOLCHAIN_DIR="/src/toolchain"
+              TOOLCHAIN_ARCHIVE="/src/tc-build-release"
+              RELEASE_JSON="/tmp/tc-build-release.json"
+
+              rm -rf "$BUILD_DIR"
+              rm -rf "$TOOLCHAIN_DIR"
+              rm -f "$TOOLCHAIN_ARCHIVE"
+
+              mkdir -p "$BUILD_DIR"
+              mkdir -p "$TOOLCHAIN_DIR"
+
+              echo "Fetching latest tc-build release..."
+
+              curl -fL \
+                -H "Accept: application/vnd.github+json" \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "https://api.github.com/repos/djemilbakhti/tc-build/releases/latest" \
+                -o "$RELEASE_JSON"
+
+              RELEASE_TAG="$(
+                jq -r ".tag_name" "$RELEASE_JSON"
+              )"
+
+              echo "Latest tc-build release: $RELEASE_TAG"
+
+              ASSET_URL="$(
+                jq -r "
+                  .assets[]
+                  | select(
+                      .name
+                      | test(
+                          \"\\\\.(tar\\\\.xz|tar\\\\.gz|tar\\\\.zst|tgz|zip)$\";
+                          \"i\"
+                        )
+                    )
+                  | .browser_download_url
+                " "$RELEASE_JSON" | head -n 1
+              )"
+
+              if [ -z "$ASSET_URL" ] || [ "$ASSET_URL" = "null" ]; then
+                echo "No toolchain archive was found in the latest release."
+                echo "Available release assets:"
+                jq -r ".assets[].name" "$RELEASE_JSON"
+                exit 1
+              fi
+
+              echo "Downloading toolchain:"
+              echo "$ASSET_URL"
+
+              curl -fL \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -o "$TOOLCHAIN_ARCHIVE" \
+                "$ASSET_URL"
+
+              case "$ASSET_URL" in
+                *.tar.xz)
+                  tar -xJf "$TOOLCHAIN_ARCHIVE" -C "$TOOLCHAIN_DIR"
+                  ;;
+
+                *.tar.gz|*.tgz)
+                  tar -xzf "$TOOLCHAIN_ARCHIVE" -C "$TOOLCHAIN_DIR"
+                  ;;
+
+                *.tar.zst)
+                  tar --use-compress-program=unzstd \
+                    -xf "$TOOLCHAIN_ARCHIVE" \
+                    -C "$TOOLCHAIN_DIR"
+                  ;;
+
+                *.zip)
+                  unzip -q "$TOOLCHAIN_ARCHIVE" -d "$TOOLCHAIN_DIR"
+                  ;;
+
+                *)
+                  echo "Unsupported toolchain format."
+                  exit 1
+                  ;;
+              esac
+
+              echo "Adding toolchain directories to PATH..."
+
+              while IFS= read -r BIN_DIR; do
+                export PATH="$BIN_DIR:$PATH"
+              done < <(find "$TOOLCHAIN_DIR" -type d -name bin)
+
+              echo "Toolchain bin directories:"
+              find "$TOOLCHAIN_DIR" -type d -name bin -print
+
+              echo "Compiler:"
+              command -v clang
+              clang --version
+
+              # LLVM=1 does not normally require GNU cross-compilers.
+              # Use the prefixes only if the downloaded toolchain provides them.
+              CROSS_COMPILE=""
+              CROSS_COMPILE_ARM32=""
+
+              if command -v aarch64-linux-gnu-ld >/dev/null 2>&1; then
+                CROSS_COMPILE="aarch64-linux-gnu-"
+              fi
+
+              if command -v arm-linux-gnueabi-ld >/dev/null 2>&1; then
+                CROSS_COMPILE_ARM32="arm-linux-gnueabi-"
+              fi
+
+              echo "CROSS_COMPILE=$CROSS_COMPILE"
+              echo "CROSS_COMPILE_ARM32=$CROSS_COMPILE_ARM32"
+
+              echo "Preparing kernel configuration..."
+
+              make \
+                O="$BUILD_DIR" \
+                ARCH=arm64 \
+                CC=clang \
+                LLVM=1 \
+                LLVM_IAS=1 \
+                CROSS_COMPILE="$CROSS_COMPILE" \
+                CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
+                mi439_defconfig
+
+              # menuconfig is interactive and cannot run unattended in CI.
+              # Use olddefconfig for a noninteractive build.
+              make \
+                O="$BUILD_DIR" \
+                ARCH=arm64 \
+                CC=clang \
+                LLVM=1 \
+                LLVM_IAS=1 \
+                CROSS_COMPILE="$CROSS_COMPILE" \
+                CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32" \
+                mi439_defconfig
+
+              echo "Building kernel..."
+
+              make \
+                -j"$(nproc --all)" \
+                O="$BUILD_DIR" \
+                ARCH=arm64 \
+                CC=clang \
+                LLVM=1 \
+                LLVM_IAS=1 \
+                CROSS_COMPILE="$CROSS_COMPILE" \
+                CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32"
+
+              echo "Kernel build completed."
+
+              echo "Kernel output:"
+              find "$BUILD_DIR/arch/arm64/boot" \
+                -maxdepth 3 \
+                -type f \
+                -print
+            '
+
+      - name: Prepare artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf artifacts
+          mkdir -p artifacts
+
+          if [ -f out/arch/arm64/boot/Image.gz-dtb ]; then
+            cp out/arch/arm64/boot/Image.lz4 artifacts/Image.lz4
+          fi
+
+          if [ -f out/arch/arm64/boot/dtbo.img ]; then
+            cp out/arch/arm64/boot/dtbo.img artifacts/dtbo.img
+          fi
+
+
+          tar -czf artifacts/kernel-build-output.tar.gz \
+            -C out .
+
+          echo "Artifacts:"
+          ls -lh artifacts
+
+      - name: Upload kernel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mi439-kernel
+          path: artifacts/
+          if-no-files-found: error
+          retention-days: 7
