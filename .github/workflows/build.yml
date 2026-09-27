@@ -28,7 +28,7 @@ jobs:
           df -h
 
       - name: Checkout private kernel source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: abdodz1234/kernel_msm-4.19
           token: ${{ secrets.KERNEL_REPO_TOKEN }}
@@ -197,8 +197,6 @@ jobs:
               
               echo "Fetching latest KernelSU source..."
               git clone --depth 1 https://github.com/KernelSU-Next/KernelSU-Next -b legacy
-              curl "https://git.x01.dpdns.org/KernelSU-Next.git/patch/?h=legacy&id=1f50f3e1b1014308e65886ebbc3977d4acef468d" -o ksu.patch
-              patch -d KernelSU-Next/ -p1< ksu.patch
               echo "Preparing kernel configuration..."
 
               make \
