@@ -34,6 +34,7 @@ jobs:
           token: ${{ secrets.KERNEL_REPO_TOKEN }}
           path: kernel
           fetch-depth: 1
+          ref: ksu-test
           persist-credentials: false
           
                 
