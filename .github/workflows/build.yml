@@ -198,8 +198,6 @@ jobs:
               
               echo "Fetching latest KernelSU source..."
               git clone --depth 1 https://github.com/KernelSU-Next/KernelSU-Next -b legacy
-              curl "https://github.com/Nevers1/KernelSU-Next/commit/5ce31aa527bcb41016f3bf6e6a65e924d099f612.patch" -o ksu.patch
-              patch -d KernelSU-Next/ -p1< ksu.patch
               echo "Preparing kernel configuration..."
 
               make \
