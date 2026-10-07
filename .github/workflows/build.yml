@@ -198,6 +198,7 @@ jobs:
               
               echo "Fetching latest KernelSU source..."
               git clone --depth 1 https://github.com/KernelSU-Next/KernelSU-Next -b legacy
+              curl https://raw.githubusercontent.com/maxsteeel/nomount/refs/heads/dev/kernel/setup.sh | bash -
               echo "Preparing kernel configuration..."
 
               make \
