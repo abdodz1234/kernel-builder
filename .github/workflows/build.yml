@@ -104,7 +104,7 @@ jobs:
                 -H "Accept: application/vnd.github+json" \
                 -H "Authorization: Bearer ${GH_TOKEN}" \
                 -H "X-GitHub-Api-Version: 2022-11-28" \
-                "https://api.github.com/repos/djemilbakhti/tc-build/releases/latest" \
+                "https://api.github.com/repos/abdodz1234/tc-build/releases/latest" \
                 -o "$RELEASE_JSON"
 
               RELEASE_TAG="$(
